@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
 import { Badge } from './components/ui/badge'
@@ -35,7 +34,8 @@ import heroWizard from './assets/hero-wizard.png'
 
 // Import components
 import CampaignWizard from './components/Campaign/CampaignWizard'
-import AuthModal from './components/Auth/AuthModal'
+import LoginForm from './components/Auth/LoginForm'
+import RegisterForm from './components/Auth/RegisterForm'
 import AdminDashboard from './components/Admin/AdminDashboard'
 import AboutPage from './components/Pages/AboutPage'
 import ContactPage from './components/Pages/ContactPage'
@@ -43,18 +43,39 @@ import FAQPage from './components/Pages/FAQPage'
 import FeaturesPage from './components/Pages/FeaturesPage'
 import Footer from './components/Footer'
 
-function AppContent() {
+
+function App() {
   const [currentView, setCurrentView] = useState('home')
   const [showCampaignWizard, setShowCampaignWizard] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [authView, setAuthView] = useState(null) // null = Homepage, 'login' or 'register'
   
-  // Use the auth context
-  const { user, isAuthenticated, logout, isLoading } = useAuth()
+  // Auth states
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [authView, setAuthView] = useState(null) // null = Homepage, 'login' or 'register'
 
-  const handleLogout = async () => {
-    await logout()
-    setAuthView(null)
+  const handleLogin = (userData) => {
+    setCurrentUser(userData)
+    setIsAuthenticated(true)
+    setAuthView(null) // Schließe Login-Formular
+    if (userData.role === 'admin') {
+      setCurrentView('admin')
+    } else {
+      setCurrentView('dashboard')
+    }
+  }
+
+  const handleRegister = (userData) => {
+    setCurrentUser(userData)
+    setIsAuthenticated(true)
+    setAuthView(null) // Schließe Register-Formular
+    setCurrentView('dashboard')
+  }
+
+  const handleLogout = () => {
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    setAuthView(null) // Zurück zur Homepage
     setCurrentView('home')
   }
 
@@ -62,20 +83,20 @@ function AppContent() {
     <div className="flex items-center space-x-4">
       <div className="hidden md:flex items-center space-x-2">
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-          user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+          currentUser?.role === 'admin' 
             ? 'bg-gradient-to-br from-red-500 to-pink-500' 
             : 'bg-gradient-to-br from-blue-500 to-purple-500'
         }`}>
-          {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
+          {currentUser?.role === 'admin' ? (
             <Shield className="w-4 h-4 text-white" />
           ) : (
             <User className="w-4 h-4 text-white" />
           )}
         </div>
         <div className="text-sm">
-          <div className="font-medium text-white">{user?.firstName} {user?.lastName}</div>
+          <div className="font-medium text-white">{currentUser?.name}</div>
           <div className="text-white/70 text-xs">
-            {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'Administrator' : 'Benutzer'}
+            {currentUser?.role === 'admin' ? 'Administrator' : 'Benutzer'}
           </div>
         </div>
       </div>
@@ -84,7 +105,6 @@ function AppContent() {
         variant="ghost"
         size="sm"
         className="text-white hover:bg-white/10"
-        disabled={isLoading}
       >
         <LogOut className="w-4 h-4 mr-2" />
         Abmelden
@@ -103,7 +123,7 @@ function AppContent() {
           <div className="hidden lg:flex items-center space-x-6 xl:space-x-8">
             {isAuthenticated ? (
               <>
-                {(user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') && (
+                {currentUser?.role !== 'admin' && (
                   <>
                     <button 
                       onClick={() => setCurrentView('dashboard')}
@@ -125,7 +145,7 @@ function AppContent() {
                     </button>
                   </>
                 )}
-                {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                {currentUser?.role === 'admin' && (
                   <button 
                     onClick={() => setCurrentView('admin')}
                     className={`text-gray-700 hover:text-red-600 transition-colors text-sm font-medium ${currentView === 'admin' ? 'text-red-600' : ''}`}
@@ -177,20 +197,23 @@ function AppContent() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
+
             {isAuthenticated ? (
               <UserMenu />
             ) : (
               <>
-                <AuthModal defaultMode="login">
-                  <Button className="bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 text-sm px-6 py-2 touch-manipulation font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
-                    Login
-                  </Button>
-                </AuthModal>
-                <AuthModal defaultMode="register">
-                  <Button className="brand-gradient text-white hover:opacity-90 text-sm px-4 py-2 touch-manipulation">
-                    Registrieren
-                  </Button>
-                </AuthModal>
+                <Button 
+                  onClick={() => setAuthView('login')}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 text-sm px-6 py-2 touch-manipulation font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  Login
+                </Button>
+                <Button 
+                  onClick={() => setAuthView('register')}
+                  className="brand-gradient text-white hover:opacity-90 text-sm px-4 py-2 touch-manipulation"
+                >
+                  Registrieren
+                </Button>
               </>
             )}
           </div>
@@ -210,7 +233,7 @@ function AppContent() {
             <div className="flex flex-col space-y-3">
               {isAuthenticated ? (
                 <>
-                  {(user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') && (
+                  {currentUser?.role !== 'admin' && (
                     <>
                       <button 
                         onClick={() => {
@@ -241,7 +264,7 @@ function AppContent() {
                       </button>
                     </>
                   )}
-                  {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                  {currentUser?.role === 'admin' && (
                     <button 
                       onClick={() => {
                         setCurrentView('admin')
@@ -255,20 +278,20 @@ function AppContent() {
                   <div className="pt-2 border-t border-gray-600">
                     <div className="flex items-center space-x-2 mb-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                        user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+                        currentUser?.role === 'admin' 
                           ? 'bg-gradient-to-br from-red-500 to-pink-500' 
                           : 'bg-gradient-to-br from-blue-500 to-purple-500'
                       }`}>
-                        {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
+                        {currentUser?.role === 'admin' ? (
                           <Shield className="w-3 h-3 text-white" />
                         ) : (
                           <User className="w-3 h-3 text-white" />
                         )}
                       </div>
                       <div className="text-sm">
-                        <div className="font-medium text-white">{user?.firstName} {user?.lastName}</div>
+                        <div className="font-medium text-white">{currentUser?.name}</div>
                         <div className="text-gray-300 text-xs">
-                          {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'Administrator' : 'Benutzer'}
+                          {currentUser?.role === 'admin' ? 'Administrator' : 'Benutzer'}
                         </div>
                       </div>
                     </div>
@@ -277,7 +300,6 @@ function AppContent() {
                       variant="ghost"
                       size="sm"
                       className="text-white hover:bg-gray-700 w-full justify-start"
-                      disabled={isLoading}
                     >
                       <LogOut className="w-4 h-4 mr-2" />
                       Abmelden
@@ -341,22 +363,24 @@ function AppContent() {
                     FAQ
                   </button>
                   <div className="pt-2 border-t border-gray-600 space-y-2">
-                    <AuthModal defaultMode="login">
-                      <Button 
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 w-full text-sm touch-manipulation font-semibold shadow-lg"
-                      >
-                        Login
-                      </Button>
-                    </AuthModal>
-                    <AuthModal defaultMode="register">
-                      <Button 
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="brand-gradient text-white hover:opacity-90 w-full text-sm touch-manipulation"
-                      >
-                        Registrieren
-                      </Button>
-                    </AuthModal>
+                    <Button 
+                      onClick={() => {
+                        setAuthView('login')
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 w-full text-sm touch-manipulation font-semibold shadow-lg"
+                    >
+                      Login
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setAuthView('register')
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="brand-gradient text-white hover:opacity-90 w-full text-sm touch-manipulation"
+                    >
+                      Registrieren
+                    </Button>
                   </div>
                 </>
               )}
@@ -367,87 +391,85 @@ function AppContent() {
     </nav>
   )
 
+  // Auth Views
+  if (!isAuthenticated && (authView === 'login' || authView === 'register')) {
+    return (
+      <div>
+        {authView === 'login' ? (
+          <LoginForm 
+            onLogin={handleLogin}
+            onSwitchToRegister={() => setAuthView('register')}
+          />
+        ) : (
+          <RegisterForm 
+            onRegister={handleRegister}
+            onSwitchToLogin={() => setAuthView('login')}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // Admin Dashboard
+  if (isAuthenticated && currentUser?.role === 'admin' && currentView === 'admin') {
+    return (
+      <div>
+        <Navigation />
+        <AdminDashboard user={currentUser} />
+      </div>
+    )
+  }
+
+  // Campaign Wizard Modal
+  if (showCampaignWizard) {
+    return (
+      <div>
+        <CampaignWizard onClose={() => setShowCampaignWizard(false)} />
+      </div>
+    )
+  }
+
   // Hero Section
   const HeroSection = () => (
-    <section className="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white py-16 sm:py-20 lg:py-24 px-4 sm:px-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-black/20"></div>
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
-          <div className="text-center lg:text-left">
-            <div className="flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-3 mb-6 sm:mb-8">
-              <Badge className="bg-yellow-400 text-yellow-900 border-yellow-500 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium animate-pulse">
-                NEU
-              </Badge>
-              <Badge className="bg-green-400 text-green-900 border-green-500 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
-                KI-POWERED
-              </Badge>
-              <Badge className="bg-blue-400 text-blue-900 border-blue-500 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
-                EINFACH
-              </Badge>
-            </div>
-            
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 sm:mb-8 leading-tight">
-              Social Media <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-red-500">
-                Kampagnen
-              </span>
-            </h1>
-            
-            <p className="text-lg sm:text-xl lg:text-2xl text-white/90 mb-8 sm:mb-10 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Erstellen Sie professionelle Werbekampagnen für alle Social Media Plattformen 
-              in nur wenigen Minuten. Ohne Vorkenntnisse, ohne Aufwand.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start">
-              {isAuthenticated ? (
-                <Button 
-                  onClick={() => setShowCampaignWizard(true)}
-                  className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black hover:from-yellow-500 hover:to-orange-600 font-bold text-base sm:text-lg px-8 sm:px-10 py-3 sm:py-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 touch-manipulation"
-                >
-                  <Play className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-                  Kampagne erstellen
-                </Button>
-              ) : (
-                <AuthModal defaultMode="register">
-                  <Button className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black hover:from-yellow-500 hover:to-orange-600 font-bold text-base sm:text-lg px-8 sm:px-10 py-3 sm:py-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 touch-manipulation">
-                    <Play className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-                    Kostenlos starten
-                  </Button>
-                </AuthModal>
-              )}
-              
-              <Button 
-                variant="outline" 
-                className="border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm font-semibold text-base sm:text-lg px-8 sm:px-10 py-3 sm:py-4 rounded-full transition-all duration-300 touch-manipulation"
-              >
-                <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-                Demo ansehen
-              </Button>
-            </div>
+    <section className="hero-section relative overflow-hidden px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+            <Badge className="bg-yellow-400 text-yellow-900 border-yellow-500 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
+              🆕 NEU
+            </Badge>
+            <Badge className="bg-green-400 text-green-900 border-green-500 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
+              🔥 BELIEBT
+            </Badge>
+            <Badge className="bg-blue-400 text-blue-900 border-blue-500 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
+              🇩🇪 DEUTSCHLAND
+            </Badge>
           </div>
           
-          <div className="relative">
-            <div className="relative z-10">
-              <img 
-                src={heroDashboard} 
-                alt="Dashboard Preview" 
-                className="w-full max-w-lg mx-auto rounded-2xl shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500"
-              />
-            </div>
-            <div className="absolute -top-4 -right-4 z-0">
-              <img 
-                src={heroCampaign} 
-                alt="Campaign Preview" 
-                className="w-48 sm:w-64 rounded-xl shadow-xl opacity-80 transform -rotate-12 hover:-rotate-6 transition-transform duration-500"
-              />
-            </div>
-            <div className="absolute -bottom-4 -left-4 z-0">
-              <img 
-                src={heroWizard} 
-                alt="Wizard Preview" 
-                className="w-48 sm:w-64 rounded-xl shadow-xl opacity-80 transform rotate-12 hover:rotate-6 transition-transform duration-500"
-              />
-            </div>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
+            <span className="text-yellow-300">Social Media</span> Kampagnen{' '}
+            <span className="text-green-300">ohne</span> technisches{' '}
+            <span className="text-blue-300">Know-how</span>
+          </h1>
+          
+          <p className="text-lg sm:text-xl md:text-2xl text-white/90 mb-8 sm:mb-10 max-w-4xl mx-auto leading-relaxed">
+            Ohne technisches Know-how. Ohne Agentur. Ohne Stress.
+          </p>
+          <p className="text-base sm:text-lg text-white/80 mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed">
+            Unsere intuitive Plattform führt Sie Schritt für Schritt durch die Erstellung erfolgreicher Kampagnen für Facebook, Instagram, TikTok und mehr.
+          </p>
+          
+
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-orange-500/20 rounded-3xl blur-3xl"></div>
+          <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-white/20">
+            <img 
+              src={heroDashboard} 
+              alt="socialmediakampagnen.com Dashboard Preview" 
+              className="w-full h-auto rounded-xl sm:rounded-2xl shadow-2xl"
+            />
           </div>
         </div>
       </div>
@@ -456,22 +478,25 @@ function AppContent() {
 
   // Features Section
   const FeaturesSection = () => (
-    <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 bg-white">
+    <section className="py-12 sm:py-16 lg:py-20 px-4 sm:px-6 bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12 sm:mb-16">
           <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6">
-            <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
-              REVOLUTIONÄR
+            <Badge className="bg-red-500 text-white border-red-600 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
+              ZEITERSPARNIS
             </Badge>
-            <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
-              ZEITSPAREND
+            <Badge className="bg-orange-500 text-white border-orange-600 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
+              EINFACH
             </Badge>
-            <Badge className="bg-green-100 text-green-800 border-green-200 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
+            <Badge className="bg-green-500 text-white border-green-600 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
+              EFFEKTIV
+            </Badge>
+            <Badge className="bg-blue-500 text-white border-blue-600 text-xs sm:text-sm px-2 sm:px-3 py-1 font-medium">
               PROFESSIONELL
             </Badge>
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
-            Warum <span className="text-purple-600">wir anders</span> sind
+            Warum <span className="text-purple-600">socialmediakampagnen.com</span> wählen?
           </h2>
           <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
             Unsere Plattform macht Social Media Marketing so einfach wie nie zuvor
@@ -712,7 +737,7 @@ function AppContent() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Willkommen zurück, {user?.firstName}!
+            Willkommen zurück, {currentUser?.name}!
           </h1>
           <p className="text-gray-600">
             Hier ist eine Übersicht Ihrer aktuellen Kampagnen und Performance
@@ -788,7 +813,11 @@ function AppContent() {
                       <p className="text-sm text-gray-500">{campaign.platform}</p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge variant={campaign.status === 'Aktiv' ? 'default' : 'secondary'}>
+                      <Badge className={
+                        campaign.status === 'Aktiv' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }>
                         {campaign.status}
                       </Badge>
                       <Button variant="ghost" size="sm">
@@ -798,34 +827,50 @@ function AppContent() {
                   </div>
                 ))}
               </div>
+              <Button 
+                onClick={() => setShowCampaignWizard(true)}
+                className="w-full mt-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                Neue Kampagne erstellen
+              </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Häufig verwendete Aktionen</CardDescription>
+              <CardTitle>Performance Übersicht</CardTitle>
+              <CardDescription>Ihre wichtigsten Metriken</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Button 
-                onClick={() => setShowCampaignWizard(true)}
-                className="w-full justify-start bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Neue Kampagne erstellen
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Analytics anzeigen
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Target className="w-4 h-4 mr-2" />
-                Zielgruppen verwalten
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Users className="w-4 h-4 mr-2" />
-                Team einladen
-              </Button>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>Impressions</span>
+                    <span>89%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: '89%' }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>Klicks</span>
+                    <span>76%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '76%' }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>Conversions</span>
+                    <span>62%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: '62%' }}></div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -833,51 +878,72 @@ function AppContent() {
     </section>
   )
 
-  // Campaign Wizard Modal
-  if (showCampaignWizard) {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-          <CampaignWizard onClose={() => setShowCampaignWizard(false)} />
-        </div>
-      </div>
-    )
-  }
-
   // Main render logic
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       <Navigation />
       
-      {/* Render different views based on currentView state */}
-      {currentView === 'home' && !isAuthenticated && (
+      {authView === 'login' && <LoginForm onBack={() => setAuthView(null)} onLogin={handleLogin} />}
+      {authView === 'register' && <RegisterForm onBack={() => setAuthView(null)} onRegister={handleRegister} />}
+      
+      {showCampaignWizard && (
+        <CampaignWizard onClose={() => setShowCampaignWizard(false)} />
+      )}
+      
+      {currentView === 'home' && !authView && (
         <>
           <HeroSection />
           <FeaturesSection />
           <PricingSection />
+          <Footer />
         </>
       )}
       
-      {currentView === 'dashboard' && isAuthenticated && <DashboardSection />}
-      {currentView === 'admin' && isAuthenticated && user?.role === 'ADMIN' && <AdminDashboard />}
-      {currentView === 'features' && <FeaturesPage />}
-      {currentView === 'pricing' && <PricingSection />}
-      {currentView === 'about' && <AboutPage />}
-      {currentView === 'contact' && <ContactPage />}
-      {currentView === 'faq' && <FAQPage />}
-      
-      <Footer />
+      {currentView === 'features' && !authView && (
+        <>
+          <FeaturesPage />
+          <Footer />
+        </>
+      )}
+      {currentView === 'pricing' && !authView && (
+        <>
+          <PricingSection />
+          <Footer />
+        </>
+      )}
+      {currentView === 'about' && !authView && (
+        <>
+          <AboutPage />
+          <Footer />
+        </>
+      )}
+      {currentView === 'contact' && !authView && (
+        <>
+          <ContactPage />
+          <Footer />
+        </>
+      )}
+      {currentView === 'faq' && !authView && (
+        <>
+          <FAQPage />
+          <Footer />
+        </>
+      )}
+      {currentView === 'dashboard' && isAuthenticated && (
+        <>
+          <DashboardSection />
+          <Footer />
+        </>
+      )}
+      {currentView === 'admin' && isAuthenticated && currentUser?.role === 'admin' && (
+        <>
+          <AdminDashboard />
+          <Footer />
+        </>
+      )}
     </div>
   )
 }
 
-// Root App component with AuthProvider
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  )
-}
-
 export default App
+
