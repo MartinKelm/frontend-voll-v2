@@ -3,7 +3,9 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
+import { Alert, AlertDescription } from '../ui/alert'
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 
 const LoginForm = ({ onLogin, onSwitchToRegister }) => {
   const [formData, setFormData] = useState({
@@ -11,23 +13,20 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
     password: ''
   })
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  
+  const { login, isLoading } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
+    setError('')
     
-    // TODO: Hier echte Login-API implementieren
-    setTimeout(() => {
-      // Placeholder für echte Authentifizierung
-      onLogin({
-        email: formData.email,
-        name: 'Benutzer',
-        role: 'user',
-        id: Math.random().toString(36).substr(2, 9)
-      })
-      setIsLoading(false)
-    }, 1500)
+    try {
+      const user = await login(formData.email, formData.password)
+      onLogin(formData) // Call the parent handler for navigation
+    } catch (error) {
+      setError(error.message || 'Login fehlgeschlagen. Bitte versuchen Sie es erneut.')
+    }
   }
 
   const handleChange = (e) => {
@@ -35,9 +34,9 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
       ...formData,
       [e.target.name]: e.target.value
     })
+    // Clear error when user starts typing
+    if (error) setError('')
   }
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center p-4">
@@ -56,6 +55,15 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
           </CardHeader>
           
           <CardContent>
+            {error && (
+              <Alert className="mb-4 border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">
@@ -72,6 +80,7 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
                     className="pl-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     placeholder="ihre@email.de"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -91,11 +100,13 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
                     className="pl-10 pr-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     placeholder="Ihr Passwort"
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    disabled={isLoading}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -111,19 +122,21 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
               </Button>
             </form>
 
-
-
             <div className="mt-6 text-center">
               <button
                 onClick={onSwitchToRegister}
                 className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                disabled={isLoading}
               >
                 Noch kein Konto? Jetzt registrieren
               </button>
             </div>
 
             <div className="mt-4 text-center">
-              <button className="text-xs text-gray-500 hover:text-gray-700">
+              <button 
+                className="text-xs text-gray-500 hover:text-gray-700"
+                disabled={isLoading}
+              >
                 Passwort vergessen?
               </button>
             </div>
@@ -135,4 +148,3 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
 }
 
 export default LoginForm
-

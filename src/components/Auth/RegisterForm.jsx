@@ -4,9 +4,11 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
+import { Alert, AlertDescription } from '../ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Checkbox } from '../ui/checkbox'
-import { Eye, EyeOff, Mail, Lock, User, Building, Phone, MapPin } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Building, Phone, AlertCircle } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 
 const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -23,8 +25,10 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState({})
+  const [apiError, setApiError] = useState('')
+
+  const { register, isLoading } = useAuth()
 
   const validateForm = () => {
     const newErrors = {}
@@ -46,23 +50,23 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setApiError('')
     
     if (!validateForm()) return
 
-    setIsLoading(true)
-    
-    // Simuliere Registrierungsprozess
-    setTimeout(() => {
-      onRegister({
+    try {
+      const user = await register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
-        name: `${formData.firstName} ${formData.lastName}`,
-        company: formData.company,
-        plan: formData.plan,
-        role: 'user',
-        id: Math.random().toString(36).substr(2, 9)
+        password: formData.password,
+        company: formData.company
       })
-      setIsLoading(false)
-    }, 2000)
+      
+      onRegister(formData) // Call the parent handler for navigation
+    } catch (error) {
+      setApiError(error.message || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.')
+    }
   }
 
   const handleChange = (e) => {
@@ -79,6 +83,9 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
         [name]: ''
       })
     }
+    
+    // Clear API error when user starts typing
+    if (apiError) setApiError('')
   }
 
   const handleSelectChange = (value) => {
@@ -115,6 +122,15 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
           </CardHeader>
           
           <CardContent>
+            {apiError && (
+              <Alert className="mb-4 border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">
+                  {apiError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -130,6 +146,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                       onChange={handleChange}
                       className={`pl-10 h-12 ${errors.firstName ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:ring-blue-500`}
                       placeholder="Max"
+                      disabled={isLoading}
                     />
                   </div>
                   {errors.firstName && <p className="text-xs text-red-500">{errors.firstName}</p>}
@@ -148,6 +165,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                       onChange={handleChange}
                       className={`pl-10 h-12 ${errors.lastName ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:ring-blue-500`}
                       placeholder="Mustermann"
+                      disabled={isLoading}
                     />
                   </div>
                   {errors.lastName && <p className="text-xs text-red-500">{errors.lastName}</p>}
@@ -168,6 +186,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                     onChange={handleChange}
                     className={`pl-10 h-12 ${errors.email ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:ring-blue-500`}
                     placeholder="max@unternehmen.de"
+                    disabled={isLoading}
                   />
                 </div>
                 {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
@@ -188,11 +207,13 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                       onChange={handleChange}
                       className={`pl-10 pr-10 h-12 ${errors.password ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:ring-blue-500`}
                       placeholder="Mindestens 6 Zeichen"
+                      disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={isLoading}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -214,11 +235,13 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                       onChange={handleChange}
                       className={`pl-10 pr-10 h-12 ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:ring-blue-500`}
                       placeholder="Passwort wiederholen"
+                      disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={isLoading}
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -241,6 +264,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                       onChange={handleChange}
                       className={`pl-10 h-12 ${errors.company ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:ring-blue-500`}
                       placeholder="Ihr Unternehmen GmbH"
+                      disabled={isLoading}
                     />
                   </div>
                   {errors.company && <p className="text-xs text-red-500">{errors.company}</p>}
@@ -259,6 +283,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                       onChange={handleChange}
                       className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       placeholder="+49 123 456789"
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -268,7 +293,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                 <Label className="text-sm font-medium text-gray-700">
                   Plan auswählen *
                 </Label>
-                <Select onValueChange={handleSelectChange}>
+                <Select onValueChange={handleSelectChange} disabled={isLoading}>
                   <SelectTrigger className={`h-12 ${errors.plan ? 'border-red-500' : 'border-gray-300'}`}>
                     <SelectValue placeholder="Wählen Sie Ihren Plan" />
                   </SelectTrigger>
@@ -298,6 +323,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                     checked={formData.acceptTerms}
                     onCheckedChange={(checked) => handleChange({ target: { name: 'acceptTerms', type: 'checkbox', checked } })}
                     className={errors.acceptTerms ? 'border-red-500' : ''}
+                    disabled={isLoading}
                   />
                   <Label htmlFor="acceptTerms" className="text-sm text-gray-700 leading-relaxed">
                     Ich akzeptiere die <a href="#" className="text-blue-600 hover:underline">AGB</a> und <a href="#" className="text-blue-600 hover:underline">Datenschutzerklärung</a> *
@@ -311,6 +337,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
                     name="acceptMarketing"
                     checked={formData.acceptMarketing}
                     onCheckedChange={(checked) => handleChange({ target: { name: 'acceptMarketing', type: 'checkbox', checked } })}
+                    disabled={isLoading}
                   />
                   <Label htmlFor="acceptMarketing" className="text-sm text-gray-700 leading-relaxed">
                     Ich möchte Updates und Marketing-Informationen erhalten (optional)
@@ -331,6 +358,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
               <button
                 onClick={onSwitchToLogin}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                disabled={isLoading}
               >
                 Bereits ein Konto? Jetzt anmelden
               </button>
@@ -343,4 +371,3 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
 }
 
 export default RegisterForm
-

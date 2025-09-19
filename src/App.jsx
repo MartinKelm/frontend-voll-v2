@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
 import { Badge } from './components/ui/badge'
@@ -44,37 +45,49 @@ import FeaturesPage from './components/Pages/FeaturesPage'
 import Footer from './components/Footer'
 
 
-function App() {
+function AppContent() {
   const [currentView, setCurrentView] = useState('home')
   const [showCampaignWizard, setShowCampaignWizard] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  
-  // Auth states
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [currentUser, setCurrentUser] = useState(null)
   const [authView, setAuthView] = useState(null) // null = Homepage, 'login' or 'register'
+  
+  // Use the auth context instead of local state
+  const { user, isAuthenticated, login, register, logout, isLoading } = useAuth()
 
-  const handleLogin = (userData) => {
-    setCurrentUser(userData)
-    setIsAuthenticated(true)
-    setAuthView(null) // Schließe Login-Formular
-    if (userData.role === 'admin') {
-      setCurrentView('admin')
-    } else {
-      setCurrentView('dashboard')
+  const handleLogin = async (userData) => {
+    try {
+      await login(userData.email, userData.password)
+      setAuthView(null) // Schließe Login-Formular
+      if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+        setCurrentView('admin')
+      } else {
+        setCurrentView('dashboard')
+      }
+    } catch (error) {
+      console.error('Login failed:', error)
+      // Error handling is done in the LoginForm component
     }
   }
 
-  const handleRegister = (userData) => {
-    setCurrentUser(userData)
-    setIsAuthenticated(true)
-    setAuthView(null) // Schließe Register-Formular
-    setCurrentView('dashboard')
+  const handleRegister = async (userData) => {
+    try {
+      await register({
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        password: userData.password,
+        company: userData.company
+      })
+      setAuthView(null) // Schließe Register-Formular
+      setCurrentView('dashboard')
+    } catch (error) {
+      console.error('Registration failed:', error)
+      // Error handling is done in the RegisterForm component
+    }
   }
 
-  const handleLogout = () => {
-    setCurrentUser(null)
-    setIsAuthenticated(false)
+  const handleLogout = async () => {
+    await logout()
     setAuthView(null) // Zurück zur Homepage
     setCurrentView('home')
   }
@@ -83,20 +96,20 @@ function App() {
     <div className="flex items-center space-x-4">
       <div className="hidden md:flex items-center space-x-2">
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-          currentUser?.role === 'admin' 
+          user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
             ? 'bg-gradient-to-br from-red-500 to-pink-500' 
             : 'bg-gradient-to-br from-blue-500 to-purple-500'
         }`}>
-          {currentUser?.role === 'admin' ? (
+          {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
             <Shield className="w-4 h-4 text-white" />
           ) : (
             <User className="w-4 h-4 text-white" />
           )}
         </div>
         <div className="text-sm">
-          <div className="font-medium text-white">{currentUser?.name}</div>
+          <div className="font-medium text-white">{user?.firstName} {user?.lastName}</div>
           <div className="text-white/70 text-xs">
-            {currentUser?.role === 'admin' ? 'Administrator' : 'Benutzer'}
+            {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'Administrator' : 'Benutzer'}
           </div>
         </div>
       </div>
@@ -105,6 +118,7 @@ function App() {
         variant="ghost"
         size="sm"
         className="text-white hover:bg-white/10"
+        disabled={isLoading}
       >
         <LogOut className="w-4 h-4 mr-2" />
         Abmelden
@@ -123,7 +137,7 @@ function App() {
           <div className="hidden lg:flex items-center space-x-6 xl:space-x-8">
             {isAuthenticated ? (
               <>
-                {currentUser?.role !== 'admin' && (
+                {user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN' && (
                   <>
                     <button 
                       onClick={() => setCurrentView('dashboard')}
@@ -145,7 +159,7 @@ function App() {
                     </button>
                   </>
                 )}
-                {currentUser?.role === 'admin' && (
+                {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
                   <button 
                     onClick={() => setCurrentView('admin')}
                     className={`text-gray-700 hover:text-red-600 transition-colors text-sm font-medium ${currentView === 'admin' ? 'text-red-600' : ''}`}
@@ -233,7 +247,7 @@ function App() {
             <div className="flex flex-col space-y-3">
               {isAuthenticated ? (
                 <>
-                  {currentUser?.role !== 'admin' && (
+                  {user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN' && (
                     <>
                       <button 
                         onClick={() => {
@@ -264,7 +278,7 @@ function App() {
                       </button>
                     </>
                   )}
-                  {currentUser?.role === 'admin' && (
+                  {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
                     <button 
                       onClick={() => {
                         setCurrentView('admin')
@@ -278,20 +292,20 @@ function App() {
                   <div className="pt-2 border-t border-gray-600">
                     <div className="flex items-center space-x-2 mb-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                        currentUser?.role === 'admin' 
+                        user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
                           ? 'bg-gradient-to-br from-red-500 to-pink-500' 
                           : 'bg-gradient-to-br from-blue-500 to-purple-500'
                       }`}>
-                        {currentUser?.role === 'admin' ? (
+                        {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
                           <Shield className="w-3 h-3 text-white" />
                         ) : (
                           <User className="w-3 h-3 text-white" />
                         )}
                       </div>
                       <div className="text-sm">
-                        <div className="font-medium text-white">{currentUser?.name}</div>
+                        <div className="font-medium text-white">{user?.firstName} {user?.lastName}</div>
                         <div className="text-gray-300 text-xs">
-                          {currentUser?.role === 'admin' ? 'Administrator' : 'Benutzer'}
+                          {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? 'Administrator' : 'Benutzer'}
                         </div>
                       </div>
                     </div>
@@ -300,6 +314,7 @@ function App() {
                       variant="ghost"
                       size="sm"
                       className="text-white hover:bg-gray-700 w-full justify-start"
+                      disabled={isLoading}
                     >
                       <LogOut className="w-4 h-4 mr-2" />
                       Abmelden
@@ -737,7 +752,7 @@ function App() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Willkommen zurück, {currentUser?.name}!
+            Willkommen zurück, {user?.firstName}!
           </h1>
           <p className="text-gray-600">
             Hier ist eine Übersicht Ihrer aktuellen Kampagnen und Performance
@@ -935,13 +950,22 @@ function App() {
           <Footer />
         </>
       )}
-      {currentView === 'admin' && isAuthenticated && currentUser?.role === 'admin' && (
+      {currentView === 'admin' && isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
         <>
           <AdminDashboard />
           <Footer />
         </>
       )}
     </div>
+  )
+}
+
+// Root App component with AuthProvider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 
